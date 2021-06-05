@@ -1,0 +1,46 @@
+#PL/SQL
+declare 
+    l_context apex_exec.t_context;    
+    l_emailsidx  pls_integer;
+    l_namesids    pls_integer;
+    l_region_id number;
+begin
+    -- Get the region id for the CUSTOMERS IR region
+    select region_id
+      into l_region_id
+      from apex_application_page_regions
+     where application_id = :APP_ID
+       and page_id        = 1
+       and static_id      = 'CUSTOMERS';
+ 
+    -- Get the query context for the CUSTOMERS IR Region
+    -- Documentation: https://docs.oracle.com/en/database/oracle/application-express/19.2/aeapi/OPEN_QUERY_CONTEXT-Function.html
+    l_context := apex_region.open_query_context (
+                        p_page_id => 1,
+                        p_region_id => l_region_id );
+    -- Get the column positions for EMAIL and NAME columns
+    l_emailsidx := apex_exec.get_column_position( l_context, 'EMAIL' );
+    l_namesids := apex_exec.get_column_position( l_context, 'NAME' );
+    
+    -- Loop throught the query of the context
+    while apex_exec.next_row( l_context ) loop        
+        apex_mail.send (
+        p_to                 => apex_exec.get_varchar2( l_context, l_emailsidx ),
+        p_template_static_id => 'NEW_YEAR_2020_PROMOTION_DUBAI_BRANCH',
+        p_placeholders       => '{' ||
+        '    "CUSTOMER":'            || apex_json.stringify( apex_exec.get_varchar2( l_context, l_namesids )) ||
+        '   ,"START_DATE":'          || apex_json.stringify( :P2_START_DATE ) ||
+        '   ,"END_DATE":'            || apex_json.stringify( :P2_END_DATE ) ||        
+        '   ,"LOCATION":'            || apex_json.stringify( :P2_LOCATION ) ||        
+        '   ,"NOTES":'               || apex_json.stringify( :P2_NOTES ) ||
+        '   ,"ITEMS":'               || apex_json.stringify( :P2_ITEMS ) ||
+        '   ,"MY_APPLICATION_LINK":' || apex_json.stringify( apex_mail.get_instance_url || apex_page.get_url( 1 )) ||        
+        '}' );
+     end loop;
+ 
+     apex_exec.close( l_context );
+exception
+     when others then
+         apex_exec.close( l_context );
+     raise; 
+end;
