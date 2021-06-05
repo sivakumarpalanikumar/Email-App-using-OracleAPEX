@@ -1,0 +1,6 @@
+customers /insert 100
+  name 
+  email
+  gender vc6 /values male, female
+  marital status /values married, single
+  country vc255 /values United States, United Arab Emirates, India, Germany
